@@ -7,12 +7,17 @@ import json
 import numpy as np
 from copy import deepcopy
 
-import mujoco_py
 import robosuite
-from robosuite.utils.mjcf_utils import postprocess_model_xml
 
 import robomimic.utils.obs_utils as ObsUtils
 import robomimic.envs.env_base as EB
+
+# protect against missing mujoco-py module, since robosuite might be using mujoco-py or DM backend
+try:
+    import mujoco_py
+    MUJOCO_EXCEPTIONS = [mujoco_py.builder.MujocoException]
+except ImportError:
+    MUJOCO_EXCEPTIONS = []
 
 
 class EnvRobosuite(EB.EnvBase):
@@ -131,7 +136,13 @@ class EnvRobosuite(EB.EnvBase):
         should_ret = False
         if "model" in state:
             self.reset()
-            xml = postprocess_model_xml(state["model"])
+            robosuite_version_id = int(robosuite.__version__.split(".")[1])
+            if robosuite_version_id <= 3:
+                from robosuite.utils.mjcf_utils import postprocess_model_xml
+                xml = postprocess_model_xml(state["model"])
+            else:
+                # v1.4 and above use the class-based edit_model_xml function
+                xml = self.env.edit_model_xml(state["model"])
             self.env.reset_from_xml_string(xml)
             self.env.sim.reset()
             if not self._is_v1:
@@ -195,7 +206,8 @@ class EnvRobosuite(EB.EnvBase):
                 # ensures that we don't accidentally add robot wrist images a second time
                 pf = robot.robot_model.naming_prefix
                 for k in di:
-                    if k.startswith(pf) and (k not in ret) and (not k.endswith("proprio-state")):
+                    if k.startswith(pf) and (k not in ret) and \
+                            (not k.endswith("proprio-state")):
                         ret[k] = np.array(di[k])
         else:
             # minimal proprioception for older versions of robosuite
@@ -273,13 +285,25 @@ class EnvRobosuite(EB.EnvBase):
         """
         return EB.EnvType.ROBOSUITE_TYPE
 
+    @property
+    def version(self):
+        """
+        Returns version of robosuite used for this environment, eg. 1.2.0
+        """
+        return robosuite.__version__
+
     def serialize(self):
         """
         Save all information needed to re-instantiate this environment in a dictionary.
         This is the same as @env_meta - environment metadata stored in hdf5 datasets,
         and used in utils/env_utils.py.
         """
-        return dict(env_name=self.name, type=self.type, env_kwargs=deepcopy(self._init_kwargs))
+        return dict(
+            env_name=self.name,
+            env_version=self.version,
+            type=self.type,
+            env_kwargs=deepcopy(self._init_kwargs)
+        )
 
     @classmethod
     def create_for_data_processing(
@@ -357,7 +381,7 @@ class EnvRobosuite(EB.EnvBase):
         that the entire training run doesn't crash because of a bad policy that causes unstable
         simulation computations.
         """
-        return (mujoco_py.builder.MujocoException)
+        return tuple(MUJOCO_EXCEPTIONS)
 
     def __repr__(self):
         """

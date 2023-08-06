@@ -42,7 +42,7 @@ python train.py --dataset <PATH_TO_POSTPROCESSED_DATASET> --config <PATH_TO_CONF
 <div class="admonition note">
 <p class="admonition-title">Create Your Own Environment Wrapper!</p>
 
-If you want to generate your own dataset in a custom environment platform that is not listed above, please see [THIS PAGE](../modules/environments.md#implement-an-environment-wrapper).
+If you want to generate your own dataset in a custom environment platform that is not listed above, please see [this page](../modules/environments.md#implement-an-environment-wrapper).
 
 </div>
 
@@ -159,8 +159,6 @@ You can easily list the filter keys present in a dataset with the `get_dataset_i
 
 </div>
 
-Using filter keys during training is easy. To use the generated train-valid split, you can set `config.experiment.validate=True` so that the demos under `mask/train` are used for training, and the demos under `mask/valid` are used for validation. 
+Using filter keys during training is easy. To use the generated train-valid split, you can set `config.experiment.validate=True` to ensure that validation will run after each training epoch, and then set `config.train.hdf5_filter_key="train"` and `config.train.hdf5_validation_filter_key="valid"` so that the demos under `mask/train` are used for training, and the demos under `mask/valid` are used for validation. 
 
-You can also use a custom filter key for training by setting `config.train.hdf5_filter_key=<FILTER_KEY_NAME>`. This ensures that only the demos under `mask/<FILTER_KEY_NAME>` are used during training. If you also set `config.experiment.validate=True`, this filter key's train-valid split will be used.
-
-
+You can also use a custom filter key for training by setting `config.train.hdf5_filter_key=<FILTER_KEY_NAME>`. This ensures that only the demos under `mask/<FILTER_KEY_NAME>` are used during training. You can also specify a custom filter key for validation by setting `config.train.hdf5_validation_filter_key`.
